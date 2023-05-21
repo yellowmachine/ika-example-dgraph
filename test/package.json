@@ -1,0 +1,22 @@
+{
+  "name": "test",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "print": "node print.js",
+    "test": "node index.js",
+    "tap": "tap --no-coverage-report --no-check-coverage ./tests/*.test.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "node-docker-api": "^1.1.22",
+    "npm-commands": "^1.1.0",
+    "tap": "^16.3.0",
+    "ypipe": "^0.1.0",
+    "ypipe-dgraph": "^0.1.0",
+    "ypipe-docker": "^0.1.0",
+    "ypipe-watch": "^0.1.1"
+  }
+}
