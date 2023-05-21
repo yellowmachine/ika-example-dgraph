@@ -11,9 +11,7 @@ function test(){
 const dql = dgraph(config)
 
 async function main() {
-    const t = `w'[ dql? | test ]
-               down
-            `;
+    const t = `w'[ dql? | test ]`;
     const f = compile(t, {
                             namespace: {dql, test}, 
                             plugins: {w: w(["./tests/*.js", "./schema/*.*"])}
