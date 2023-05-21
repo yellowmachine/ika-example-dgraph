@@ -1,5 +1,5 @@
 const config = require('./config')
-const { loadSchema } = require('./dgraph')
+const { loadSchema } = require('ypipe-dgraph')
 
 async function print(){ 
     const name = `./${config.schema}`
