@@ -16,7 +16,6 @@
     "tap": "^16.3.0",
     "ypipe": "^0.1.0",
     "ypipe-dgraph": "^0.1.0",
-    "ypipe-docker": "^0.1.0",
     "ypipe-watch": "^0.1.1"
   }
 }

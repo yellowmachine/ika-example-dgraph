@@ -1,5 +1,5 @@
 module.exports = {
-    schema: __dirname + "/schema/schema.js",
+    schema: __dirname + "../schema/schema.js",
     url: "http://db",
     port: "8080",
     claims: "https://my.app.io/jwt/claims",
