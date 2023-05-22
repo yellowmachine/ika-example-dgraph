@@ -1,6 +1,6 @@
 # sveltekit app with dgraph backend
 
-Given the next files:
+Given the next files as a running workspace:
 
 `docker-compose.yaml`
 
@@ -53,7 +53,7 @@ password: secret
 cert: false
 ```
 
-You can access code-server opening http://localhost:3000 and do `npm run test` (npm i is done automatically, see .vscode folder).
+You can access code-server opening http://localhost:3000 and do `cd dgraph && npm run test` (npm i is done automatically before, see .vscode folder).
 
 Let's give a little of explanation:
 
@@ -67,11 +67,22 @@ const npm = require('npm-commands')
 const {dgraph} = require('ypipe-dgraph')
 const config = require("./config")
 
+/* config.js
+module.exports = {
+    schema: __dirname + "/schema/schema.js",
+    url: "http://db",
+    port: "8080",
+    claims: "https://my.app.io/jwt/claims",
+    secret: "secret",
+    schemaFooter: (c) => `# Dgraph.Authorization {"VerificationKey":"${c.secret}","Header":"Authorization","Namespace":"${c.claims}","Algo":"HS256","Audience":["aud1","aud5"]}`
+}
+*/
+
 function test(){
     npm().run('tap');
 }
 
-const dql = dgraph(config)
+const dql = dgraph(config) // just send a schema to database
 
 async function main() {
     const t = `w'[ dql? | test ]`; // pipeline expression, see ypipe: https://github.com/yellowmachine/ypipe
@@ -163,6 +174,8 @@ Example result in console:
 
 If you want to use plain graphql:
 
+`schema.graphql`
+
 ```graphql
 #include enum.graphql
 
@@ -191,9 +204,9 @@ You have to set this in `config.js`:
 
 ```js
 module.exports = {
-    schema: __dirname + "/schema/schema.js",
-    url: "http://db",
-    port: "8080",
+    schema: __dirname + "/schema/schema.js", // js or graphql
+    url: "http://db",  // where is database 
+    port: "8080",      // port database is listening to
     claims: "https://my.app.io/jwt/claims",
     secret: "secret",
     schemaFooter: (c) => `# Dgraph.Authorization {"VerificationKey":"${c.secret}","Header":"Authorization","Namespace":"${c.claims}","Algo":"HS256","Audience":["aud1","aud5"]}`
