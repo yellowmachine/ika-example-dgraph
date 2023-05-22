@@ -1,38 +1,201 @@
-# create-svelte
+# sveltekit app with dgraph backend
 
-Everything you need to build a Svelte project, powered by [`create-svelte`](https://github.com/sveltejs/kit/tree/master/packages/create-svelte).
+Given the next files:
 
-## Creating a project
+`docker-compose.yaml`
 
-If you're seeing this, you've probably already done this step. Congrats!
-
-```bash
-# create a new project in the current directory
-npm create svelte@latest
-
-# create a new project in my-app
-npm create svelte@latest my-app
+```yaml
+services:
+  db:
+    image: dgraph/standalone:master
+    ports:
+      - 8080:8080
+  code: 
+    build: .
+    ports: 
+      - 8080
+      - 5173
+    #volumes:
+    #   - "$HOME/.config:/root/.config"
+    command:
+      - /bin/sh
+      - -c
+      - |
+        git clone https://github.com/yellowmachine/ika-example-dgraph.git .
+        code-server /project
 ```
 
-## Developing
+`Dockerfile`
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+```Dockerfile
+FROM node:16-bullseye
 
-```bash
-npm run dev
+RUN apt-get update 
+RUN apt-get install -y \
+  build-essential \
+  pkg-config \
+  python3
 
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
+RUN curl -fsSL https://code-server.dev/install.sh | sh
+
+COPY config.yaml /root/.config/code-server/
+WORKDIR /project
+
+CMD code-server
 ```
 
-## Building
+`config.yaml`
 
-To create a production version of your app:
-
-```bash
-npm run build
+```yaml
+bind-addr: 0.0.0.0:8080
+auth: password
+password: secret
+cert: false
 ```
 
-You can preview the production build with `npm run preview`.
+You can access code-server opening http://localhost:3000 and do `npm run test` (npm i is done automatically, see .vscode folder).
 
-> To deploy your app, you may need to install an [adapter](https://kit.svelte.dev/docs/adapters) for your target environment.
+Let's give a little of explanation:
+
+`./dgraph/index.js`
+
+```js
+// a pipeline that whatches to changes in folder tests and schema, then executes test task
+const {compile} = require("ypipe")
+const { w } = require("ypipe-watch");
+const npm = require('npm-commands')
+const {dgraph} = require('ypipe-dgraph')
+const config = require("./config")
+
+function test(){
+    npm().run('tap');
+}
+
+const dql = dgraph(config)
+
+async function main() {
+    const t = `w'[ dql? | test ]`; // pipeline expression, see ypipe: https://github.com/yellowmachine/ypipe
+    const f = compile(t, {
+                            namespace: {dql, test}, 
+                            plugins: {w: w(["./tests/*.js", "./schema/*.*"])}
+        });
+    await f();
+}
+
+main()
+```
+
+The pipeline is based on [ypipe](https://github.com/yellowmachine/ypipe)
+
+```json
+"scripts": {
+    "print": "node print.js",
+    "test": "node index.js",
+    "tap": "tap --no-coverage-report --no-check-coverage ./tests/*.test.js"
+  },
+```
+
+`./dgraph/schema/schema.js`
+
+```js
+const { quote, gql } = require('ypipe-dgraph')
+
+const ADMIN = quote("ADMIN")
+
+module.exports = gql`
+type Job @auth(
+    query: {
+        rule:  "{$ROLE: { eq: ${ADMIN} } }" 
+    }
+){
+    id: ID!
+    title: String!
+    completed: Boolean!
+    command: String!
+}
+`
+```
+
+`./dgraph/test/1.test.js`
+
+```js
+const tap = require('tap')
+const { dropData, client, gql} = require('ypipe-dgraph')
+const config = require("../config")
+
+SETUP = gql`
+mutation MyMutation {
+  addJob(input: {title: "send mails", completed: false, command: "mail ..."}){
+    job{
+      id
+    }
+  }
+}
+`
+QUERY = gql`
+query MyQuery {
+  queryJob {
+    id
+    title
+    completed
+  }
+}
+`
+
+tap.beforeEach(async () => {
+  await dropData(config)
+});
+
+tap.test('wow!', async (t) => {
+    await client({ROLE: 'ADMIN'}, config).request(SETUP)
+    let response = await client({ROLE: 'NONO'}, config).request(QUERY)
+    t.equal(response.queryJob.length, 0)
+});
+```
+
+The test is very simple, just add data with the Role ADMIN and then query with other role, and there's a rule about role so we get 0 rows of result.
+
+You can change either test files in test folder or the schema files, and tests are run automatically.
+
+Example result in console:
+
+
+
+If you want to use plain graphql:
+
+```graphql
+#include enum.graphql
+
+type Job @auth(
+    query: {
+        rule:  "{$ROLE: { eq: \"ADMIN\" } }" 
+    }
+){
+    id: ID!
+    title: String!
+    completed: Boolean!
+    command: String!
+}
+```
+
+`enum.graphql`
+
+```graphql
+enum Role {
+  ADMIN
+  DEVELOPER
+}
+```
+
+You have to set this in `config.js`:
+
+```js
+module.exports = {
+    schema: __dirname + "/schema/schema.js",
+    url: "http://db",
+    port: "8080",
+    claims: "https://my.app.io/jwt/claims",
+    secret: "secret",
+    schemaFooter: (c) => `# Dgraph.Authorization {"VerificationKey":"${c.secret}","Header":"Authorization","Namespace":"${c.claims}","Algo":"HS256","Audience":["aud1","aud5"]}`
+}
+```
