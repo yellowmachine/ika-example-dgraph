@@ -14,7 +14,7 @@ async function main() {
     const t = `w'[ dql? | test ]`;
     const f = compile(t, {
                             namespace: {dql, test}, 
-                            plugins: {w: w(["./tests/*.js", "../schema/*.*"])}
+                            plugins: {w: w(["./tests/*.js", "./schema/*.*"])}
         });
     await f();
 }

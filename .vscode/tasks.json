@@ -20,9 +20,9 @@
         {
             "label": "tests - npm i",
             "type": "shell",
-            "command": "cd test && npm i",
+            "command": "cd dgraph && npm i",
             "windows": {
-                "command": "cd test && npm i"
+                "command": "cd dgraph && npm i"
             },
             "group": "none",
             "presentation": {
